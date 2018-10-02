@@ -1,0 +1,582 @@
+---
+title: "MetaG_Pipeine"
+author: "Edna Chiang"
+date: "October 1, 2018"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r, include=F}
+library(kableExtra)
+```
+# Overview  
+  
+This document contains notes for Edna Chiang's metagenomic analysis pipeline.    
+It is assumed that you have a basic understanding of metagenomics and linux command line, and are looking for recommendations and guidance in choosing and using software to perform your own analysis.  
+To follow this pipeline, use raw fastq files from paired end sequencing.  
+This guide does not touch upon appropriate experimental design, DNA preparation, or sequencing methods. This pipeline is for paired end data only, not singled end. While many of the steps and concepts are translatable to single end data, many of the software programs are incompatible with single end data.  
+  
+To learn more about metagenomics, there are plentiful reviews to read. Here are a few reviews to consider:  
+* [Kunin, V., et al. (2008) Microbiol Mol Biol  Rev. A bioinformatician's guide to metagenomics](https://www.ncbi.nlm.nih.gov/pubmed/19052320)  
+* [Sharpton, T.J. (2014) Front Plant Sci. An  introduction to the analysis of shotgun metagenomic data](https://www.ncbi.nlm.nih.gov/pubmed/24982662)  
+* [Quince, C., et al. (2017) Nat Biotechnol. Shotgun metagenomics, from sampling to analysis](https://www.ncbi.nlm.nih.gov/pubmed/28898207)  
+  
+  
+To learn more about command line, there are many online and on-campus resources. Here are a few to consider:  
+* On-campus computing resources. For UW-Madison, this includes the [Biotechnology Center](https://www.biotech.wisc.edu/), which offers many computational workshops including [Linux Essentials](https://www.biotech.wisc.edu/services/brc/workshop/overview)  
+* [Software Carpentry](https://swcarpentry.github.io/shell-novice/)
+  
+  
+# 1) Define your question  
+  
+Before beginning any analysis, you must first define your question. How you analyze your data is completely dependent upon your question.  
+Some ideas to consider:  
+* Do you care only about the overall genomic potential and not about specific taxa?
+* Do you want to identify specific taxa?  
+* Do you want metagenome-assembled genomes?
+* In what types of genes are you interested?
+  
+  
+# 2) Evaluate data quality  
+  
+Use [FastQC](	https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) to evaluate the quality of your raw fastq files.  
+FastQC will output a *.html* file with multiple plots.  
+  
+For additional resources in understanding FastQC outputs, refer to the following webpages:  
+[Example FastQC Outputs](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+[FastQC Manual](https://dnacore.missouri.edu/PDF/FastQC_Manual.pdf)
+[FastQC Tutorial](https://rtsf.natsci.msu.edu/sites/_rtsf/assets/File/FastQC_TutorialAndFAQ_080717.pdf)
+  
+The plots to which I pay most attention are:  
+* Basic Statistics  
+![](Images/fastqc_basestats)
+* Per base sequence quality  
+  + Sequence quality naturally decreases near the tail-end of the sequence  
+![](Images/fastqc_seqqual)
+* Overrepresented sequences  
+  + These sequences are often adapters/primers  
+![](Images/overrepseq)
+* Adapter Content  
+![](Images/adaptercontent)
+  
+```{r}
+fastqc /path/to/fastq -o /path/to/output
+```
+* `fastq`
+  + Calls upon the fastq software
+* `/path/to/fastq`
+  + Specifies fastq files
+  + You can include more than 1 fastq file, just separate by 1 space
+* `-o /path/to/output`
+  + Specifies output folder
+  
+If you find that fastqc isn't running and you get the following error:  
+*Exception in thread "main" java.awt.HeadlessException:
+No X11 DISPLAY variable was set, but this program performed an operation which requires it.*  
+Try adding ` &` at the very end of the command (note: it is a space followed by an ampersand).  
+  
+  
+# 3) Quality trim  
+  
+Use [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) to remove adapters/primers/overrepresented sequences and trim poor quality bp's.  
+  
+```{r, eval=F}
+java -jar /path/to/trimmomatic-0.36.jar PE -threads # -trimlog /path/to/trimmomatic/logfile /path/to/R1/fastq.gz /path/to/R2/fastq.gz -baseout /path/to/output.gz ILLUMINACLIP:/path/to/overrep_seqs.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
+```
+  
+* `java -jar`
+  + Because Trimmomatic is written in java, you must open the software using java 
+* `/path/to/trimmomatic-0.36.jar`
+  + This tells the computer where to find the Trimmomatic software 
+  + Depending on what version of Trimmomatic you download, you may have a different name for the *.jar* software  
+* `PE`
+  + This tells the program we are inputting paired end data
+  + Trimmomatic can also work with single end data
+* `-threads`
+  + This sets the number of threads/processors you want to use
+  + Replace `#` with your desired number of processors
+* `trimlog /path/to/trimmomatic/logfile.txt`
+  + Trimmomatic saves information about its trimming in a logfile, including:
+    + read name
+    + surviving sequence length
+    + location of the first surviving base (amount trimmed from the start)
+    + location of the last surviving base in the original read
+    + amount trimmed from end
+  + Specify the location and name of your logfile
+* `/path/to/R1/fastq.gz`
+  + Specify location of your forward read fastq file
+  + Trimmomatic accepts both *.fastq* and *.fastq.gz* files
+* `/path/to/R2/fastq.gz`
+  + Specify location of your reverse read fastq file
+  + Trimmomatic accepts both *.fastq* and *.fastq.gz* files
+* `-baseout /path/to/output.gz`
+  + Specify location of the output files:
+    + output_1P.gz
+      + Paired forward reads
+    + output_2P.gz
+      + Paired reverse reads
+    + output_1U.gz
+      + Unpaired forward reads
+    + output_2Ugz
+      + Unpaired reverse reads
+  + *output* will be the prefix of all output files
+  + *.gz* outputs everything as a gzipped fastq file
+  + There should be the same number of reads in `output_1P.gz` as in `output_2P.gz`
+    + These are reads that have both a forward & reverse read (thus "paired")
+* `ILLUMINACLIP:/path/to/overrep_seqs.fa:2:30:10`
+  + This removes specified sequences
+    + Trimmomatic comes with adapter files for commonly used Illumina adapters
+      + Refer to the Trimmomatic website for more info
+    + You can also make your own custom adapter file
+[](Images/trimmomatic_overrep.PNG)
+      + Sequences to be removed from forward reads must end with `/1`
+      + Sequences to be removed from reverse reads must end with `/2`
+  + `ILLUMINACLIP:`
+    + Command to remove specific sequences
+  + `/path/to/overrep_seqs.fa`
+    + This can be Trimmomatic's provided adapter files, or your own custom file
+  + `:2:30:10`
+    + Default parameters for adapter trimming. Refer to Trimmomatic's website for more info.
+* `LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36`
+  + Trims poor quality bp's
+  + The numbers are the default parameters. Refer to Trimmomatic's website for more info.
+
+### Alternatives
+I've also tested adapter removal with [cutadapt](https://cutadapt.readthedocs.io/en/stable/index.html) and quality trimming with [sickle](https://github.com/najoshi/sickle).  
+I chose Trimmomatic over these two software simply because it is more efficient to use one program instead of two.  
+  
+  
+# 4) Remove host contamination (optional)  
+  
+If you study host-associated microbiomes, host contamination can greatly hinder metagenomic assembly with regards to both time, computational power, and quality.  
+If you have access to a genome of your host organism, I **strongly** recommend that you remove host contamination.  
+However, if you do not have access to your host's genome, I do not have an answer for removing host contamination. In this case, I suggest that you (1) do some googling (in case an answer has been found since I wrote this pipeline), and (2) move to step 5.  
+  
+I follow [this tutorial](http://www.metagenomics.wiki/tools/short-read/remove-host-sequences) for my host contamination removal.
+  
+### A) Download host genome  
+  
+The following is an example of how I download the genome for my host organism (13-lined ground squirrel (*Ictidomys tridecemlineatus*).  
+First, I download the host genome:
+```{r, eval=F}
+curl -O ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/236/235/GCA_000236235.1_SpeTri2.0/GCA_000236235.1_SpeTri2.0_assembly_structure/Primary_Assembly/unplaced_scaffolds/FASTA/unplaced.scaf.fna.gz
+```
+  
+Next, I open the downloaded file:
+  
+```{r, eval=F}
+gunzip unplaced.scaf.fna.gz
+```
+  
+Now I rename the genome to something that makes sense to me:
+
+```{r, eval=F}
+mv unplaced.scaf.fna 13liner.fna
+```
+  
+### B) Build host genome database  
+Use [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml) to create a database from the host genome
+
+### C) Map reads against host database  
+We'll use [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml) again.
+
+```{r, eval=F}
+bowtie2 --very-sensitive-local -p #thread --seed # -x /path/to/database -1 /path/to/R1/fastq.gz -2 /path/to/R2/fastq.gz -S /path/to/output.sam
+```
+**Note:** The output of this to terminal will include stats about % mapped. **SAVE THIS!!!** These stats are not saved in the output file, and you will want these for your records.  
+* `bowtie2`
+  + Calls upon bowtie2
+* `--very-sensitive-local`
+  + This does a local alignment that is very sensitive when matching so you get more matched reads
+  + If you're mapping short reads to a big genome, **do not do a global alignment**!!!
+  + This setting is slower than other settings. If you want speed, use a less sensitive local setting. However, my main concern is removing all host contamination that I can to improve the quality of my assembly downstream. For me, speed is a minor concern.
+* `-p #thread`
+  + Sets the number of threads
+  + Replace *#thread*
+* `--seed #`
+  + Sets the seed so that your work is **reproducible**. Very important if you care about reproducibility!!!
+* `-x /path/to/database`
+  + Specifies your host database
+* `-1 /path/to/R1/fastq.gz`
+  + Specifies your forward read fastq file
+  + If you did the Trimmomatic step, this would be `output_1P.gz`
+* `-2 /path/to/R2/fastq.gz`
+  + Specifies your reverse read fastq file
+  + If you did the Trimmomatic step, this would be `output_2P.gz`
+* `-S /path/to/output.sam`
+  + Specifies your output file, which is in SAM format (gibberish to the normal human eye)
+  
+### D) Convert SAM file to BAM file  
+A SAM file is huuuuuge, so we convert it into a BAM file to save room.
+The remaining steps will use the program [samtools](http://samtools.sourceforge.net/)
+  
+```{r, eval=F}
+samtools view -@ #threads -bS /path/to/output.sam > /path/to/output.bam
+```
+* `samtools view`
+  + Calls upon samtools and a specific a command within the package
+* `-@ #threads`
+  + Replace *#threads* with the number of threads/processors you want to run
+* `-bS`
+  + Outputs a BAM file
+* `/path/to/output.sam > /path/to/output.bam`
+  + Specifies input SAM file and the output BAM file
+
+
+
+### E) Extract unmapped reads (non-host)  
+```{r, eval=F}
+samtools view -@ #threads -b -f 12 -F 256 /path/to/output.bam > /path/to/unmap.bam
+```
+* `samtools view`
+  + Calls upon samtools and a specific a command within the package
+* `-@ #threads`
+  + Replace *#threads* with the number of threads/processors you want to run
+* `-b`
+  + Outputs a BAM file
+* `-f 12`
+  + Extracts only alignments with both reads unmapped
+* `-F 256`
+  + Does not extract aligns that are not primary alignment
+* `/path/to/output.bam > /path/to/unmap.bam`
+  + Specifies input BAM file and the output BAM file
+
+
+  
+### F) Sort BAM file to organize paired reads  
+```{r}
+samtools sort -n /path/to/unmap.bam -o /path/to/unmap.sorted.bam
+```
+  
+### G) Convert BAM to fastq  
+```{r, eval=F}
+samtools bam2fq /path/to/unmap.sorted.bam > /path/to/nohost.fastq
+```
+
+Output = interleaved fastq files
+  
+
+### Alternatives
+* You can use [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml) flag `--un-conc` to directly pull out unmapped reads if you don't care about the flexibility of the long samtools pipeline
+* The [Hurwitz Lab](https://github.com/hurwitzlab/Host-Screen) has a nice script to remove host contamination.
+  
+  
+# 5) Evaluate data quality  
+  
+Same as Step 1.  
+  
+Use [FastQC](	https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) to evaluate the quality of your raw fastq files.  
+FastQC will output a *.html* file with multiple plots.  
+  
+For additional resources in understanding FastQC outputs, refer to the following webpages:  
+[Example FastQC Outputs](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+[FastQC Manual](https://dnacore.missouri.edu/PDF/FastQC_Manual.pdf)
+[FastQC Tutorial](https://rtsf.natsci.msu.edu/sites/_rtsf/assets/File/FastQC_TutorialAndFAQ_080717.pdf)
+  
+The plots to which I pay most attention are:  
+* Basic Statistics  
+![](Images/fastqc_basestats)
+* Per base sequence quality  
+  + Sequence quality naturally decreases near the tail-end of the sequence  
+![](Images/fastqc_seqqual)
+* Overrepresented sequences  
+  + These sequences are often adapters/primers  
+![](Images/overrepseq)
+* Adapter Content  
+![](Images/adaptercontent)
+  
+```{r}
+fastqc /path/to/fastq -o /path/to/output
+```
+* `fastq`
+  + Calls upon the fastq software
+* `/path/to/fastq`
+  + Specifies fastq files
+  + You can include more than 1 fastq file, just separate by 1 space
+* `-o /path/to/output`
+  + Specifies output folder
+  
+If you find that fastqc isn't running and you get the following error:  
+*Exception in thread "main" java.awt.HeadlessException:
+No X11 DISPLAY variable was set, but this program performed an operation which requires it.*  
+Try adding ` &` at the very end of the command (note: it is a space followed by an ampersand).  
+  
+
+# 6) Taxonomic profile (optional)  
+
+This step is an alternative to binning and gives you a quick look at what taxa comprise your metagenome.  
+I have currently not found a good software that I like for this step, but here is what I've tried so far:
+  
+* [kraken](https://ccb.jhu.edu/software/kraken/)
+  + I haven't officially tested this yet because the program is so large that I'm afraid I'll break my server using it (I have a history, so I'm trying not to continually anger people)
+  + If you want to do this step, this would be my recommendation (assuming that you have the computational resources)
+* [Centrifuge](https://ccb.jhu.edu/software/centrifuge/)
+  + The smaller, more efficient version of kraken
+  + Resulted in > 50% unclassified short reads because the program only classifies reads with 100% match to its database
+* [mOTU](http://www.bork.embl.de/software/mOTU/tutorial.motu.standalone.html) and [fetchMG](http://www.bork.embl.de/software/mOTU/fetchMG.html)
+  + Uses single copy marker genes
+  + I haven't analyzed the output of these programs much because I've been too lazy to write a script to parse through it all
+    + The output contains species-level classifications, but you have to figure out the higher level classifications (Phylum --> Family)
+* [MetaPhlAn2](https://bitbucket.org/biobakery/metaphlan2)
+  + Only classifies bacteria, which somewhat defeats the purpose of metagenomics
+  + I got some very funky results that are complete opposite of 16S results
+  
+If you have any suggestions, please let me know!  
+  
+# 7) Assemble  
+  
+There are new assemblers being developed all the time. I've tested 3 assemblers:  
+[IDBA_UD](http://i.cs.hku.hk/~alse/hkubrg/projects/idba_ud/)
+[metaSPAdes](http://cab.spbu.ru/software/spades/)
+[MEGAHIT](https://github.com/voutcn/megahit)
+  
+Here are the pros/cons of each assembler:  
+
+* IDBA_UD
+  + Pros:
+    + Highest N50
+    + More "balanced" assembly (see notes about metaSPAdes for clarification)
+    + Higher # of hits from KEGG & dbCAN compared to metaSPAdes
+  + Cons:
+    + Poor documentation
+    + Inflexible input options
+* metaSPAdes
+  + Pros:
+    + Good documentation
+    + Larger # of bp's are incorporated into final assembly compared to IDBA_UD
+    + Creates largest contigs
+  + Cons:
+    + Assembly includes lots of short contigs and lots of giant contigs
+    + Overall N50 is lower than than of IDBA_UD
+      + But if you start removing contigs < 500 bp or < 1000 bp, N50 of metaSPAdes is MUCH higher than that of IDBA_UD
+    + Few hits from KEGG & dbCAN
+      + 30% - 50% lower compared to hits from IDBA_UD
+* MEGAHIT
+  + Pros:
+    + Fastest
+    + Least computationally expensive
+  + Cons:
+    + Gave the poorest quality assemblies
+  
+Recommendations:  
+**IDBA_UD** = For those with at least beginner-intermediate experience who do not lack time and/or computational resources.  
+**metaSPAdes** = For those with beginner experience who do not lack time and/or computational resources.  
+**MEGAHIT** = For those with little experience, little time, and/or limited computational resources.  
+  
+Ultimately, the relatively "best" assembler will differ based on your data set. If you have the time and resources, try out a few. If you do not have the time and resources, pick one and run with it.  
+  
+  
+  
+### 7A) IDBA_UD  
+  
+[IDBA_UD website](http://i.cs.hku.hk/~alse/hkubrg/projects/idba_ud/)
+  
+#### 7A.1) Convert fastq to fasta  
+IDBA_UD accepts only 1 fasta files per metagenome.
+  
+  
+##### Interleaved
+This is when you have 1 fastq file per metagenome.
+```{r, eval=F}
+idba-1.1.3/bin/fq2fa --paired --filter /path/to/fastq /path/to/output.fa
+```
+* `idba-1.1.3/bin/fq2fa`
+  + Calls upon the command to convert fastq to fasta
+  + This part of the command will change depending on what version of IDBA_UD you're using
+* `/path/to/fastq`
+  + Specifies location of input fastq file
+* `/path/to/output.fa`
+  + Specifies name and location of output fasta file
+  
+  
+##### File pairs
+This is if you have 2 fastq files per metagenome.
+```{r, eval=F}
+idba-1.1.3/bin/fq2fa --merge --filter path/to/R1/fastq /path/to/R2/fastq /path/to/output/fasta
+```
+* `idba-1.1.3/bin/fq2fa`
+  + Calls upon the command to convert fastq to fasta
+  + This part of the command will change depending on what version of IDBA_UD you're using
+* `/path/to/R1/fastq`
+  + Specifies location of forward read input fastq file
+* `/path/to/R2/fastq`
+  + Specifies location of reverse read input fastq file
+* `/path/to/output.fa`
+  + Specifies name and location of output fasta file
+  
+##### 7A.2) Assemble
+```{r, eval=F}
+idba-1.1.3/bin/idba_ud -r /path/to/output.fa --mink 45 --maxk 125 --step 20 --num_threads # -o /path/to/output/directory
+```
+* `idba-1.1.3/bin/idba_ud`
+  + Calls upon assembler
+* `-r /path/to/output.fa`
+  + `-r` specifies that this is the input fasta file
+  + `/path/to/output.fa/` specifies the location of the fasta file you made in the previous step
+* `--mink 45 --maxk 125 --step 20`
+  + This sets the kmer combo:
+    + 45, 65, 85, 105, 125
+  + I settled with this kmer combo due to the compromise between speed and % of input reads tha tmap to the final assembly. You can get huge N50's with IDBA_UD, but these usually represent 50 - 60% of your input reads and are hugely biased towards abundant community members. With lower N50's, I'm getting >83% of input reads mapping tote assembly.
+  + `--mink 45`
+    + Minimum kmer size = 45
+  + `--maxk 125`
+    + Maximum kmer size = 125
+  + `--step 20`
+    + Go from min kmer to max kmer by steps of 20
+* `--num_threads #`
+  + Sets number of threads/processors
+* `-o /path/to/output/directory`
+  + Specifies output folder
+  
+  
+### 7B) MetaSPAdes  
+  
+[metaSPAdes website](http://cab.spbu.ru/software/spades/)
+  
+#### Interleaved  
+This is when you have 1 fastq file per metagenome.  
+```{r, eval=F}
+spades-3.12.0 --meta --pe1-12 /path/to/fastq -k 55,75,95 -t # -m # -o /path/to/output
+```
+* `spades-3.12.0`
+  + Calls upon the assembler
+  + This will change depending on what version you're using
+* `--meta`
+  + Tells the program that you're doing a metagenome assembly
+  + This is the same thing as running the command `metaspades.py`
+* `--pe1-12 /path/to/fastq`
+  + `--pe1`
+    + Tells program you're using paired end reads
+    + The first `1` tells the program this is your first sample. This is only ever changed if you run normal SPAdes (**not** metaSPAdes).
+  + `-12`
+    + Refers to interleaved reads (1 input file)
+  + `/path/to/fastq`
+    + Specifies location of your input fastq file
+* `-k 55,75,95`
+  + Specifies kmers
+  + I chose the combination *55, 75, 95* because I felt this gave the best compromise between speed and quality. You may prefer a different combination.
+* `-t #`
+  + Specifies number of threads/processors
+* `-m #`
+  + Specifies memory to be allocated to assembly
+  + If this is too low, you'll run out of memory, the assembly won't finish, and you'll receive an error
+* `-o /path/to/output`
+  + Specifies location & name of output directory
+  
+  
+#### File pairs  
+  
+This is when you have 2 fastq files per metagenome.  
+```{r, eval=F}
+spades-3.12.0 --meta --pe1-1 /path/to/R1/fastq --pe1-2 /path/to/R2/fastq -k 55,75,95 -t # -m # -o /path/to/output
+```
+* `spades-3.12.0`
+  + Calls upon the assembler
+  + This will change depending on what version you're using
+* `--meta`
+  + Tells the program that you're doing a metagenome assembly
+  + This is the same thing as running the command `metaspades.py`
+* `--pe1-1 /path/to/R1/fastq`
+  + `--pe1`
+    + Tells program you're using paired end reads
+    + The first `1` tells the program this is your first sample. This is only ever changed if you run normal SPAdes (**not** metaSPAdes).
+  + `-1`
+    + Refers to your forward read
+  + `/path/to/R1/fastq`
+    + Specifies location of your input forward read fastq file
+* `--pe1-2 /path/to/R1/fastq`
+  + `--pe1`
+    + Tells program you're using paired end reads
+    + The first `1` tells the program this is your first sample. This is only ever changed if you run normal SPAdes (**not** metaSPAdes).
+  + `-2`
+    + Refers to your reverse read
+  + `/path/to/R2/fastq`
+    + Specifies location of your input reverse read fastq file
+* `-k 55,75,95`
+  + Specifies kmers
+  + I chose the combination *55, 75, 95* because I felt this gave the best compromise between speed and quality. You may prefer a different combination.
+* `-t #`
+  + Specifies number of threads/processors
+* `-m #`
+  + Specifies memory to be allocated to assembly
+  + If this is too low, you'll run out of memory, the assembly won't finish, and you'll receive an error
+* `-o /path/to/output`
+  + Specifies location & name of output directory
+  
+  
+### 7C) MegaHit
+  
+[MEGAHIT website](https://github.com/voutcn/megahit)  
+
+#### Interleaved  
+This is when you have 1 fastq file per metagenome.  
+```{r, eval=F}
+megahit --12 /path/to/fastq --k-list # -o /path/to/output
+```
+* `megahit`
+  + Calls upon assembler
+* `--12 /path/to/fastq`
+  + `--12`
+    + Indicates interleaved input fastq
+  + `/path/to/fastq`
+    + Specifies location of input fastq file
+* `--k-list #`
+  + Specifies kmers to user
+  + Be sure to use **more than 1 kmer**!!! This will greatly improve the quality of your assembly
+* `-o /path/to/output`
+  + `-o`
+    + Indicates output
+  + `/path/to/output`
+    + Specifies location of output
+  
+  
+#### File Pairs
+This is when you have 2 fastq files per metagenome.  
+```{r, eval=F}
+megahit --1 /path/to/R1/fastq --2 /path/to/R2/fastq --k-list # -o /path/to/output
+```
+* `megahit`
+  + Calls upon assembler
+* `--1 /path/to/R1/fastq`
+  + `--1`
+    + Specifies forward read
+  + `/path/to/R1/fastq`
+    + Specifies location of input forward read fastq file
+* `--2 /path/to/R2/fastq`
+  + `--2`
+    + Specifies reverse read
+  + `/path/to/R2/fastq`
+    + Specifies location of input reverse read fastq file
+* `--k-list #`
+  + Specifies kmers to user
+  + Be sure to use **more than 1 kmer**!!! This will greatly improve the quality of your assembly
+* `-o /path/to/output`
+  + `-o`
+    + Indicates output
+  + `/path/to/output`
+    + Specifies location of output
+
+
+# 8) Evaluate assembly (part 1)
+  
+  
+# 9) Evaluate assembly (part 2)  
+  
+  
+# 10) Binning (optional)
+  
+  
+# 11) Predict open reading frames  
+  
+  
+# 12) Predict genes  
+
+### COG
+
+### Pfam
+
+### dbCAN
+
+# 13) Metabolic pathway reconstruction  
