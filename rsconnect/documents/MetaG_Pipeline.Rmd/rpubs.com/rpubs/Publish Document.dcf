@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/425650/818af342ed6b4f0abdecfa0a7b6c4120
+bundleId: https://api.rpubs.com/api/v1/document/425650/818af342ed6b4f0abdecfa0a7b6c4120
+url: http://rpubs.com/ednachiang/425650
+when: 1538600743.8462
