@@ -1,7 +1,7 @@
 ---
-title: "MetaG_Pipeine"
+title: "Metagenomics Pipeline"
 author: "Edna Chiang"
-date: "October 1, 2018"
+date: "October 3, 2018"
 output:
   html_document:
     toc: true
@@ -34,6 +34,9 @@ To learn more about command line, there are many online and on-campus resources.
   
 * On-campus computing resources. For UW-Madison, this includes the [Biotechnology Center](https://www.biotech.wisc.edu/), which offers many computational workshops including [Linux Essentials](https://www.biotech.wisc.edu/services/brc/workshop/overview)
 * [Software Carpentry](https://swcarpentry.github.io/shell-novice/)  
+  
+  
+Note:  Some of the code chunks will contain both black and gray text. It is intended that you run all of the code.
   
   
 # 1) Define your question  
