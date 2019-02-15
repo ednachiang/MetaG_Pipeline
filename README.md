@@ -1,6 +1,6 @@
 # MetaG_Pipeline  
   
-Suen Lab metagenomic analysis pipeline by Edna Chiang & Andrew Steinberger 
+Suen Lab metagenomic analysis pipeline by [Edna Chiang](https://github.com/ednachiang) & [Andrew Steinberger](https://github.com/asteinberger9). 
   
   
 To view the pipeline tutorial online, [click here](http://rpubs.com/ednachiang/425650).  
