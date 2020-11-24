@@ -611,7 +611,7 @@ I chose <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a>
 <div id="alternatives-1" class="section level2">
 <h2>Alternatives</h2>
 <ul>
-<li>You can use <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">bowtie2</a> flag <code>--un-conc</code> to directly pull out unmapped reads if you don’t need the flexibility of the long samtools pipeline</li>
+<li>You can use <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">bowtie2</a> flag <code>--un-conc</code> to directly pull out unmapped reads if you don’t need the flexibility of the long samtools pipeline. Refer to <a href="http://www.metagenomics.wiki/tools/short-read/remove-host-sequences">this tutorial</a> for directions.</li>
 <li>The <a href="https://github.com/hurwitzlab/Host-Screen">Hurwitz Lab</a> has a nice script to remove host contamination.</li>
 </ul>
 </div>
@@ -743,15 +743,14 @@ No X11 DISPLAY variable was set, but this program performed an operation which r
 <ul>
 <li>The smaller, more efficient version of kraken</li>
 </ul></li>
-<li><a href="http://www.bork.embl.de/software/mOTU/tutorial.motu.standalone.html">mOTU</a> and <a href="http://www.bork.embl.de/software/mOTU/fetchMG.html">fetchMG</a>
+<li><a href="https://motu-tool.org/">mOTU</a> and <a href="http://vm-lux.embl.de/~mende/fetchMG/about.html">fetchMG</a>
 <ul>
 <li>Uses single copy marker genes</li>
 <li>The output contains species-level classifications, but you have to figure out the higher level classifications (Phylum –&gt; Family)</li>
 </ul></li>
-<li><a href="https://bitbucket.org/biobakery/metaphlan2">MetaPhlAn2</a>
+<li><a href="http://segatalab.cibio.unitn.it/tools/metaphlan/index.html">MetaPhlAn</a>
 <ul>
-<li>Only classifies bacteria</li>
-<li>This program gave me some odd taxonomic classifications</li>
+<li>Uses clade-specific marker genes</li>
 </ul></li>
 </ul>
 </div>
@@ -1384,16 +1383,16 @@ Use the function <a href="https://gist.github.com/nathanhaigh/3521724">deinterle
 <p>This step takes your assembly and separates contigs into different “bins.” Each bin represents a different taxonomic group.</p>
 <p>There are many software to accomplish this, including:</p>
 <ul>
-<li><a href="https://bitbucket.org/berkeleylab/metabat">MetaBAT</a></li>
+<li><a href="https://bitbucket.org/berkeleylab/metabat/wiki/Home">MetaBAT</a></li>
 <li><a href="https://github.com/KwanLab/Autometa">Autometa</a></li>
 <li><a href="http://merenlab.org/software/anvio/">Anvi’o</a></li>
 <li><a href="https://concoct.readthedocs.io/en/latest/">CONCOCT</a></li>
 </ul>
-<p>Here, I’ll only be talk about <a href="https://bitbucket.org/berkeleylab/metabat">MetaBAT</a> because that’s the only program I’ve used so far.</p>
+<p>Here, I’ll only talk about <a href="https://bitbucket.org/berkeleylab/metabat/wiki/Home">MetaBAT</a> because that’s the only program I’ve used so far.</p>
 <p>Please refer to the <a href="https://bitbucket.org/berkeleylab/metabat/wiki/Best%20Binning%20Practices">MetaBAT Binning Tutorial</a> for more information about this step.</p>
 <div id="a-summarize-bam-depth" class="section level2">
 <h2>10A) Summarize BAM depth</h2>
-<p>Use <a href="https://bitbucket.org/berkeleylab/metabat">MetaBAT</a> to generates more stats about your assembly contig depth, which we’ll use later in binning.</p>
+<p>Use <a href="https://bitbucket.org/berkeleylab/metabat/wiki/Home">MetaBAT</a> to generates more stats about your assembly contig depth, which we’ll use later in binning.</p>
 <pre class="r"><code>/path/to/metabat/jgi_summarize_bam_contig_depths --outputDepth /path/to/output/depth.txt /path/to/sorted/output/bam</code></pre>
 <ul>
 <li><code>path/to/metabat/jgi_summarize_bam_contig_depths</code>
@@ -1413,7 +1412,7 @@ Use the function <a href="https://gist.github.com/nathanhaigh/3521724">deinterle
 </div>
 <div id="b-bin-contigs" class="section level2">
 <h2>10B) Bin Contigs</h2>
-<p>Please refer to <a href="https://bitbucket.org/berkeleylab/metabat">MetaBAT</a> for parameters to set for your binning. There are lots of options and it’s up to you to select what’s best for your purposes. I don’t include those parameters in the code displayed below.</p>
+<p>Please refer to <a href="https://bitbucket.org/berkeleylab/metabat/wiki/Homet">MetaBAT</a> for parameters to set for your binning. There are lots of options and it’s up to you to select what’s best for your purposes. I don’t include those parameters in the code displayed below.</p>
 <pre class="r"><code>/path/to/metabat2 -i /path/to/assembly/fasta -a /path/to/output/depth.txt -o /path/to/output/folder -v --seed number</code></pre>
 <ul>
 <li><code>/path/to/metabat2</code>
@@ -1488,7 +1487,7 @@ Use the function <a href="https://gist.github.com/nathanhaigh/3521724">deinterle
 </div>
 <div id="predict-orfs" class="section level1">
 <h1>11) Predict ORFs</h1>
-<p>Use <a href="https://github.com/hyattpd/Prodigal">prodigal</a> to predict open reading frames.<br />
+<p>Use <a href="https://github.com/hyattpd/Prodigal">prodigal</a> to predict open reading frames (ORFs).<br />
 The guide here on prodigal is not comprehensive, so please consult the <a href="https://github.com/hyattpd/Prodigal">prodigal website</a> for information on additional parameters.</p>
 <p>You can predict open reading frames in your assembly (output from step 7) or in your bins (output from step 10) depending on your goals.</p>
 <pre class="r"><code>path/to/prodigal -a path/to/output.faa -d path/to/output.ffn -i /path/to/assembly/fasta -o /path/to/output.gbk -p meta -s /path/to/output/genes.gff</code></pre>
@@ -1534,7 +1533,7 @@ The guide here on prodigal is not comprehensive, so please consult the <a href="
 <p>The genes you want to target will completely depend on your question. Databases that I’ve used are:</p>
 <ul>
 <li><a href="https://www.ncbi.nlm.nih.gov/COG/">Clusters of Orthologous Groups (COG)</a></li>
-<li><a href="http://csbl.bmb.uga.edu/dbCAN/">DataBase for Automated Carbohydrate-Active Enzyme Annotation (dbCAN)</a></li>
+<li><a href="http://bcb.unl.edu/dbCAN2/">DataBase for Automated Carbohydrate-Active Enzyme Annotation (dbCAN)</a></li>
 <li><a href="https://github.com/yinlabniu/eCAMI">Simultaneous Classification and Motif Identification for enzyme/CAZyme annotation (eCAMI)</a></li>
 <li><a href="https://pfam.xfam.org/">Protein Families (Pfam)</a></li>
 </ul>
@@ -1546,7 +1545,7 @@ The guide here on prodigal is not comprehensive, so please consult the <a href="
 <ul>
 <li><code>path/to/rpsblast</code>
 <ul>
-<li>Replace with your path to <a href="http://nebc.nox.ac.uk/bioinformatics/docs/rpsblast.html">rpsblast</a></li>
+<li>Replace with your path to rpsblast</li>
 </ul></li>
 <li><code>-db /path/to/COG_database</code>
 <ul>
@@ -1595,7 +1594,7 @@ Here are papers that have used this normalization method:</p>
 </div>
 <div id="dbcan" class="section level2">
 <h2>dbCAN</h2>
-<p><a href="http://csbl.bmb.uga.edu/dbCAN/">DataBase for Automated Carbohydrate-Active Enzyme Annotation (dbCAN) website</a></p>
+<p><a href="http://bcb.unl.edu/dbCAN2/">DataBase for Automated Carbohydrate-Active Enzyme Annotation (dbCAN) website</a></p>
 <p>You can use the <a href="http://bcb.unl.edu/dbCAN2/">online dbCAN server</a> or download <a href="https://github.com/linnabrown/run_dbcan">dbCAN2</a>.</p>
 <p>I used an older iteration of dbCAN and describe my steps below.</p>
 <p>You’ll use <a href="http://hmmer.org/">hmmer</a> to predict <a href="http://www.cazy.org/">carbohydrate-active enzymes (CAZymes)</a>. I encourage you to explore the <a href="ttp://hmmer.org/">hmmer website</a> to determine what parameters you will need as this will change depending on your goals and plans for downstream analyses. Below are the parameters and steps I use.</p>
@@ -1640,10 +1639,11 @@ Here are papers that have used this normalization method:</p>
 <li>Replace <code>/path/to/input/prodigal.faa</code> with the path to your prodigal .faa file</li>
 </ul></li>
 </ul>
-<p>To make sense of the dbCAN output, I parse it to create a table that lists each ORF with a predicted CAZyme and its top CAZyme hit, as well as a count of each CAZyme class. Here are two scripts for this:</p>
+<p>To make sense of the dbCAN output, I parse it to create a table that lists each ORF with a predicted CAZyme and its top CAZyme hit, as well as a count of each CAZyme class. Here are some scripts for this (you only need to use one of them to create the tables):</p>
 <ul>
 <li><a href="https://github.com/cfrancoeur/CAZy_counting">dbCan_final.py</a></li>
 <li><a href="https://github.com/ednachiang/MetaG_Pipeline/blob/master/dbCAN_scripts/dbcanParse.pl">dbcanParse.pl</a></li>
+<li><a href="https://github.com/ednachiang/MetaG_Pipeline/blob/master/dbCAN_scripts/dbcanParse.py">dbcanParse.py</a></li>
 </ul>
 <p>To prepare the data for stats, I create two tables:</p>
 <ol style="list-style-type: decimal">
